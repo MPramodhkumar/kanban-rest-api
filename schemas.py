@@ -1,6 +1,3 @@
-# models.py describes what is stored in PostgreSQL, while schemas.py describes what data your API is allowed to receive or return.
-#schemas.py is mainly about what data your API should send/receive.
-
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
@@ -17,3 +14,19 @@ class TaskOut(BaseModel):
     priority: Priority
     position: int
     created_at: datetime | None
+
+
+class TaskCreate(BaseModel):
+    column_id: int
+    title: str
+    description: str | None = None
+    priority: Priority = Priority.medium
+    position: int = 0
+
+
+class TaskUpdate(BaseModel):
+    column_id: int | None = None
+    title: str | None = None
+    description: str | None = None
+    priority: Priority | None = None
+    position: int | None = None
