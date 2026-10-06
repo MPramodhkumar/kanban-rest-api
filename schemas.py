@@ -16,6 +16,34 @@ class TaskOut(BaseModel):
     created_at: datetime | None
 
 
+class ColumnOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    project_id: int
+    name: str
+    position: int
+
+
+class ColumnWithTasks(ColumnOut):
+    tasks: list[TaskOut]
+
+
+class ProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str | None
+    owner_id: int
+    created_at: datetime | None
+
+
+class BoardOut(BaseModel):
+    project: ProjectOut
+    columns: list[ColumnWithTasks]
+
+
 class TaskCreate(BaseModel):
     column_id: int
     title: str

@@ -1,11 +1,19 @@
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 import models, schemas
 
 app = FastAPI(title="TaskFlow API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
@@ -16,6 +24,32 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------- Projects & Board ----------
+
+
+@app.get("/projects", response_model=list[schemas.ProjectOut])
+def list_projects(db: Session = Depends(get_db)):
+    return db.scalars(select(models.Project).order_by(models.Project.id)).all()
+
+
+@app.get("/projects/{project_id}/board", response_model=schemas.BoardOut)
+def get_board(project_id: int, db: Session = Depends(get_db)):
+    project = db.scalars(
+        select(models.Project)
+        .where(models.Project.id == project_id)
+        .options(
+            selectinload(models.Project.columns).selectinload(models.BoardColumn.tasks)
+        )
+    ).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return {"project": project, "columns": project.columns}
+
+
+# ---------- Tasks ----------
 
 
 @app.get("/tasks", response_model=list[schemas.TaskOut])

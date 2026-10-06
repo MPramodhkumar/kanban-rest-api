@@ -16,16 +16,32 @@ class Priority(str, enum.Enum):
     high = "high"
 
 
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(Text)
+    owner_id: Mapped[int]
+    created_at: Mapped[datetime | None]
+
+    columns: Mapped[list["BoardColumn"]] = relationship(
+        back_populates="project", order_by="BoardColumn.position"
+    )
+
+
 class BoardColumn(Base):
     __tablename__ = "board_columns"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[int]
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
     name: Mapped[str] = mapped_column(String(50))
     position: Mapped[int]
 
-    tasks: Mapped[list["Task"]] = relationship(back_populates="column")
-
+    project: Mapped["Project"] = relationship(back_populates="columns")
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="column", order_by="Task.position"
+    )
 
 class Task(Base):
     __tablename__ = "tasks"
