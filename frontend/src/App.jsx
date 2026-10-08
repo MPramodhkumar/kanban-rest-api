@@ -1,11 +1,12 @@
-//App.jsx is the brain. It asks the API for the board when the page opens, and calls the API again when you add, move or delete a task.
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "./api";
+import { api, auth } from "./api";
 import { Column, Header, NewTaskModal, Sidebar } from "./components";
 import Dashboard from "./Dashboard";
+import Login from "./Login";
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authState, setAuthState] = useState(auth.getToken() ? "checking" : "out"); // checking | in | out | error
   const [project, setProject] = useState(null);
   const [columns, setColumns] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ready | empty | error
@@ -30,6 +31,43 @@ export default function App() {
     setTimeout(() => setToast(""), 3500);
   }, []);
 
+  // ----- authentication -----
+  const resetSession = useCallback(() => {
+    setUser(null);
+    setColumns([]);
+    setProject(null);
+    setStatus("loading");
+    setView("dashboard");
+    setQuery("");
+    setAuthState("out");
+  }, []);
+
+  useEffect(() => {
+    auth.onUnauthorized = resetSession;
+    return () => { auth.onUnauthorized = null; };
+  }, [resetSession]);
+
+  const checkSession = useCallback(async () => {
+    setAuthState("checking");
+    try {
+      setUser(await api.get("/auth/me"));
+      setAuthState("in");
+    } catch (e) {
+      if (e.status === 401) { auth.clear(); setAuthState("out"); }
+      else setAuthState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (auth.getToken()) checkSession();
+  }, [checkSession]);
+
+  const logout = () => {
+    auth.clear();
+    resetSession();
+  };
+
+  // ----- board data -----
   const load = useCallback(async () => {
     try {
       const projects = await api.get("/projects");
@@ -38,14 +76,14 @@ export default function App() {
       setProject(board.project);
       setColumns(board.columns);
       setStatus("ready");
-    } catch {
-      setStatus("error");
+    } catch (e) {
+      if (e.status !== 401) setStatus("error");
     }
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (authState === "in") load();
+  }, [authState, load]);
 
   const q = query.trim().toLowerCase();
   const visibleColumns = useMemo(() => {
@@ -118,6 +156,29 @@ export default function App() {
     }
   };
 
+  // ----- screens before login -----
+  if (authState === "out") {
+    return (
+      <Login
+        onAuthed={(u) => {
+          setUser(u);
+          setStatus("loading");
+          setAuthState("in");
+        }}
+      />
+    );
+  }
+  if (authState === "checking") return <div className="splash">Loading…</div>;
+  if (authState === "error") {
+    return (
+      <div className="splash">
+        <h2>Can't reach the API</h2>
+        <p>Start the backend with <code>uvicorn main:app --reload</code>, then try again.</p>
+        <button className="btn primary" onClick={checkSession}>Try again</button>
+      </div>
+    );
+  }
+
   const modalColumn = columns.find((c) => c.id === modalColumnId);
   const total = columns.reduce((n, c) => n + c.tasks.length, 0);
 
@@ -129,6 +190,8 @@ export default function App() {
         onNewTask={() => columns[0] && setModalColumnId(columns[0].id)}
         theme={theme}
         onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+        user={user}
+        onLogout={logout}
       />
       <Sidebar view={view} onView={setView} />
       <main className="main">
@@ -150,7 +213,7 @@ export default function App() {
         )}
 
         {status === "ready" && view === "dashboard" && (
-          <Dashboard project={project} columns={columns} onOpenBoard={() => setView("board")} />
+          <Dashboard project={project} columns={columns} userName={user.name} onOpenBoard={() => setView("board")} />
         )}
 
         {status === "ready" && view === "board" && (

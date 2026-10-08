@@ -1,7 +1,5 @@
-//components.jsx holds the pieces you see: the header, sidebar, columns, cards and the "New task" form.
-
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, LayoutDashboard, Columns3, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
+import { BarChart3, LayoutDashboard, Columns3, LogOut, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
 
 const PRIORITY_LABEL = { low: "Low priority", medium: "Medium priority", high: "High priority" };
 
@@ -10,7 +8,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function Header({ query, onQuery, onNewTask, theme, onTheme }) {
+export function Header({ query, onQuery, onNewTask, theme, onTheme, user, onLogout }) {
   return (
     <header className="header">
       <div className="brand">
@@ -32,7 +30,13 @@ export function Header({ query, onQuery, onNewTask, theme, onTheme }) {
       <button className="theme-btn" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>
-      <span className="me" title="Pramodh">P</span>
+      <div className="user-chip" title={user?.email}>
+        <span className="me">{user?.name?.[0]?.toUpperCase() ?? "?"}</span>
+        <span className="user-name">{user?.name}</span>
+      </div>
+      <button className="theme-btn" onClick={onLogout} aria-label="Log out" title="Log out">
+        <LogOut size={18} />
+      </button>
     </header>
   );
 }

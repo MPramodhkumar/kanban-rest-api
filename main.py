@@ -3,13 +3,11 @@
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-import models, schemas
-
-from fastapi.security import OAuth2PasswordRequestForm
 import models, schemas, security
 
 app = FastAPI(title="TaskFlow API")
@@ -21,6 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add this to a route to make it require a valid login token
+protected = [Depends(security.get_current_user)]
+
 
 @app.get("/")
 def root():
@@ -30,7 +31,6 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
 
 
 # ---------- Auth ----------
@@ -74,16 +74,19 @@ def me(current_user: models.User = Depends(security.get_current_user)):
     return current_user
 
 
-
 # ---------- Projects & Board ----------
 
 
-@app.get("/projects", response_model=list[schemas.ProjectOut])
+@app.get("/projects", response_model=list[schemas.ProjectOut], dependencies=protected)
 def list_projects(db: Session = Depends(get_db)):
     return db.scalars(select(models.Project).order_by(models.Project.id)).all()
 
 
-@app.get("/projects/{project_id}/board", response_model=schemas.BoardOut)
+@app.get(
+    "/projects/{project_id}/board",
+    response_model=schemas.BoardOut,
+    dependencies=protected,
+)
 def get_board(project_id: int, db: Session = Depends(get_db)):
     project = db.scalars(
         select(models.Project)
@@ -101,12 +104,14 @@ def get_board(project_id: int, db: Session = Depends(get_db)):
 # ---------- Tasks ----------
 
 
-@app.get("/tasks", response_model=list[schemas.TaskOut])
+@app.get("/tasks", response_model=list[schemas.TaskOut], dependencies=protected)
 def list_tasks(db: Session = Depends(get_db)):
     return db.scalars(select(models.Task).order_by(models.Task.id)).all()
 
 
-@app.post("/tasks", response_model=schemas.TaskOut, status_code=201)
+@app.post(
+    "/tasks", response_model=schemas.TaskOut, status_code=201, dependencies=protected
+)
 def create_task(task_in: schemas.TaskCreate, db: Session = Depends(get_db)):
     column = db.get(models.BoardColumn, task_in.column_id)
     if column is None:
@@ -119,7 +124,7 @@ def create_task(task_in: schemas.TaskCreate, db: Session = Depends(get_db)):
     return task
 
 
-@app.get("/tasks/{task_id}", response_model=schemas.TaskOut)
+@app.get("/tasks/{task_id}", response_model=schemas.TaskOut, dependencies=protected)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(models.Task, task_id)
     if task is None:
@@ -127,7 +132,7 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     return task
 
 
-@app.patch("/tasks/{task_id}", response_model=schemas.TaskOut)
+@app.patch("/tasks/{task_id}", response_model=schemas.TaskOut, dependencies=protected)
 def update_task(
     task_id: int, changes: schemas.TaskUpdate, db: Session = Depends(get_db)
 ):
@@ -148,7 +153,7 @@ def update_task(
     return task
 
 
-@app.delete("/tasks/{task_id}", status_code=204)
+@app.delete("/tasks/{task_id}", status_code=204, dependencies=protected)
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(models.Task, task_id)
     if task is None:

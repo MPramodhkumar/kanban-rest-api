@@ -1,5 +1,3 @@
-//Dashboard.jsx takes the same board data and turns it into the stats, donut and bars.
-
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Layers, Loader } from "lucide-react";
 
@@ -72,7 +70,7 @@ function formatDate(iso) {
   return iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
 }
 
-export default function Dashboard({ project, columns, onOpenBoard }) {
+export default function Dashboard({ project, columns, onOpenBoard, userName }) {
   const all = columns.flatMap((c) => c.tasks.map((t) => ({ ...t, columnName: c.name, columnId: c.id })));
   const doneCol = columns.find((c) => /done/i.test(c.name)) ?? columns[columns.length - 1];
   const progressCol = columns.find((c) => /progress/i.test(c.name));
@@ -98,7 +96,7 @@ export default function Dashboard({ project, columns, onOpenBoard }) {
     <div className="dash">
       <section className="hero">
         <div>
-          <h1>{greeting}, Pramodh</h1>
+          <h1>{greeting}, {userName.split(" ")[0]}</h1>
           <p>
             {total === 0
               ? `${project.name} has no tasks yet.`
