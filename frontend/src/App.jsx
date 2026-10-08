@@ -1,6 +1,9 @@
+//App.jsx is the brain. It asks the API for the board when the page opens, and calls the API again when you add, move or delete a task.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import { Column, Header, NewTaskModal, Sidebar } from "./components";
+import Dashboard from "./Dashboard";
 
 export default function App() {
   const [project, setProject] = useState(null);
@@ -11,6 +14,16 @@ export default function App() {
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null); // { columnId, index }
   const [toast, setToast] = useState("");
+  const [view, setView] = useState("dashboard"); // dashboard | board
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("tz-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+    catch { return "light"; }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("tz-theme", theme); } catch {}
+  }, [theme]);
 
   const notify = useCallback((message) => {
     setToast(message);
@@ -110,8 +123,14 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header query={query} onQuery={setQuery} onNewTask={() => columns[0] && setModalColumnId(columns[0].id)} />
-      <Sidebar />
+      <Header
+        query={query}
+        onQuery={(v) => { setQuery(v); if (v) setView("board"); }}
+        onNewTask={() => columns[0] && setModalColumnId(columns[0].id)}
+        theme={theme}
+        onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+      />
+      <Sidebar view={view} onView={setView} />
       <main className="main">
         {status === "loading" && <p className="state">Loading your board…</p>}
 
@@ -130,7 +149,11 @@ export default function App() {
           </div>
         )}
 
-        {status === "ready" && (
+        {status === "ready" && view === "dashboard" && (
+          <Dashboard project={project} columns={columns} onOpenBoard={() => setView("board")} />
+        )}
+
+        {status === "ready" && view === "board" && (
           <>
             <div className="titlebar">
               <h1>{project.name}</h1>
@@ -142,7 +165,7 @@ export default function App() {
                 <Column
                   key={column.id}
                   column={column}
-                  tone={i % 4}
+                  tone={i % 5}
                   canDrag={!q}
                   dragId={dragId}
                   drop={drop}

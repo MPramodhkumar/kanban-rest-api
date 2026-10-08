@@ -1,5 +1,7 @@
+//components.jsx holds the pieces you see: the header, sidebar, columns, cards and the "New task" form.
+
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, LayoutDashboard, Columns3, Plus, Search, Settings, Trash2, X } from "lucide-react";
+import { BarChart3, LayoutDashboard, Columns3, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
 
 const PRIORITY_LABEL = { low: "Low priority", medium: "Medium priority", high: "High priority" };
 
@@ -8,7 +10,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function Header({ query, onQuery, onNewTask }) {
+export function Header({ query, onQuery, onNewTask, theme, onTheme }) {
   return (
     <header className="header">
       <div className="brand">
@@ -27,22 +29,32 @@ export function Header({ query, onQuery, onNewTask }) {
       <button className="btn primary" onClick={onNewTask}>
         <Plus size={16} /> New task
       </button>
+      <button className="theme-btn" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
+        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
       <span className="me" title="Pramodh">P</span>
     </header>
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ view, onView }) {
   const items = [
-    { icon: LayoutDashboard, label: "Dashboard" },
-    { icon: Columns3, label: "Boards", active: true },
-    { icon: BarChart3, label: "Reports" },
-    { icon: Settings, label: "Settings" },
+    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "board", icon: Columns3, label: "Board" },
+    { id: "reports", icon: BarChart3, label: "Reports", soon: true },
+    { id: "settings", icon: Settings, label: "Settings", soon: true },
   ];
   return (
     <nav className="sidebar" aria-label="Main">
-      {items.map(({ icon: Icon, label, active }) => (
-        <button key={label} className={"nav-item" + (active ? " active" : "")} aria-current={active ? "page" : undefined}>
+      {items.map(({ id, icon: Icon, label, soon }) => (
+        <button
+          key={id}
+          className={"nav-item" + (view === id ? " active" : "")}
+          aria-current={view === id ? "page" : undefined}
+          disabled={soon}
+          title={soon ? "Coming soon" : undefined}
+          onClick={() => onView(id)}
+        >
           <Icon size={20} />
           <span>{label}</span>
         </button>
@@ -62,7 +74,7 @@ function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOv
 
   return (
     <li
-      className={"card" + (dragging ? " dragging" : "")}
+      className={"card p-" + task.priority + (dragging ? " dragging" : "")}
       draggable={canDrag}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";

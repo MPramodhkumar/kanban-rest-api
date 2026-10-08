@@ -1,4 +1,6 @@
+//src/api.js is the single place that knows the backend address (http://127.0.0.1:8000). It sends requests and reads the replies.
 // Change this if your backend runs somewhere else (or set VITE_API_URL in frontend/.env)
+
 const BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 async function request(path, options = {}) {

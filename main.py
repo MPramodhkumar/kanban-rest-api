@@ -1,3 +1,6 @@
+#main.py has the API routes that use that connection, such as "list tasks" and "update a task".
+
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select

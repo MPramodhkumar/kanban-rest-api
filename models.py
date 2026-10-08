@@ -1,4 +1,5 @@
 # models.py converts your database design into Python classes so SQLAlchemy knows what your tables, columns, foreign keys, and relationships look like.
+#models.py describes your tables (projects, columns, tasks) in Python, so the backend knows how to read and write them.
 
 
 import enum
