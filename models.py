@@ -17,6 +17,15 @@ class Priority(str, enum.Enum):
     high = "high"
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime | None]
+
 class Project(Base):
     __tablename__ = "projects"
 

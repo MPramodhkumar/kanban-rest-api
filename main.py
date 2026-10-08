@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session, selectinload
 from database import get_db
 import models, schemas
 
+from fastapi.security import OAuth2PasswordRequestForm
+import models, schemas, security
+
 app = FastAPI(title="TaskFlow API")
 
 app.add_middleware(
@@ -27,6 +30,49 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+
+# ---------- Auth ----------
+
+
+@app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
+def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    email = user_in.email.lower()
+    if db.scalars(select(models.User).where(models.User.email == email)).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    user = models.User(
+        name=user_in.name,
+        email=email,
+        hashed_password=security.hash_password(user_in.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.post("/auth/login", response_model=schemas.Token)
+def login(
+    form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+):
+    user = db.scalars(
+        select(models.User).where(models.User.email == form.username.lower())
+    ).first()
+    if user is None or not security.verify_password(form.password, user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {"access_token": security.create_access_token(user.id), "token_type": "bearer"}
+
+
+@app.get("/auth/me", response_model=schemas.UserOut)
+def me(current_user: models.User = Depends(security.get_current_user)):
+    return current_user
+
 
 
 # ---------- Projects & Board ----------
