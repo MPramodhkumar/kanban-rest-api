@@ -5,11 +5,11 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
-from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text
+
 
 class Priority(str, enum.Enum):
     low = "low"
@@ -26,12 +26,21 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime | None]
 
+
 project_members = Table(
     "project_members",
     Base.metadata,
     Column("project_id", ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
     Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
 )
+
+task_assignees = Table(
+    "task_assignees",
+    Base.metadata,
+    Column("task_id", ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -60,6 +69,7 @@ class BoardColumn(Base):
         back_populates="column", order_by="Task.position"
     )
 
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -72,3 +82,6 @@ class Task(Base):
     created_at: Mapped[datetime | None]
 
     column: Mapped["BoardColumn"] = relationship(back_populates="tasks")
+    assignees: Mapped[list["User"]] = relationship(
+        secondary=task_assignees, order_by="User.name"
+    )

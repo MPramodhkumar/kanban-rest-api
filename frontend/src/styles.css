@@ -313,3 +313,32 @@ button:disabled { cursor: default; }
 .note { margin: 0; color: var(--muted); font-size: 13px; }
 @media (max-width: 1000px) { .search { display: none; } .header .btn.primary { margin-left: auto; } }
 @media (max-width: 760px) { .project-switch select { max-width: 120px; } }
+
+/* ---------- Avatars, team, assignees ---------- */
+.avatar { display: inline-grid; place-items: center; flex: none; border-radius: 50%; color: #fff; font-weight: 800; border: 2px solid var(--surface); }
+.avatar.more { background: var(--line); color: var(--muted); }
+.avatar-stack { display: inline-flex; }
+.avatar-stack .avatar + .avatar { margin-left: -8px; }
+.card-meta { display: inline-flex; align-items: center; gap: 10px; }
+.card-title { all: unset; cursor: inherit; }
+.card-title:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+.card { cursor: pointer; }
+
+.team-btn { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 6px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); font-weight: 700; font-size: 13px; transition: box-shadow 0.15s; }
+.team-btn:hover { box-shadow: var(--shadow); }
+
+.assign { margin: 0; padding: 0; border: 0; min-width: 0; }
+.assign legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal .chip { flex: none; flex-direction: row; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); font-size: 13px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip.on { background: color-mix(in srgb, var(--focus) 16%, var(--surface)); border-color: var(--focus); }
+.chip:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.members { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; }
+.members li { display: flex; align-items: center; gap: 12px; }
+.members strong { display: block; font-size: 14px; }
+.members em { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--line); color: var(--muted); font-style: normal; font-size: 11px; }
+.members small { color: var(--muted); font-size: 12.5px; }
+.invite { display: flex; align-items: flex-end; gap: 10px; }
+.invite label { flex: 1; }

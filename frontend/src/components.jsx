@@ -2,11 +2,39 @@ import { useEffect, useRef, useState } from "react";
 import { BarChart3, LayoutDashboard, Columns3, FolderPlus, LogOut, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
 
 const PRIORITY_LABEL = { low: "Low priority", medium: "Medium priority", high: "High priority" };
+const AVATAR_COLORS = ["#ef5b4c", "#3b6ef0", "#f0a020", "#1fb26b", "#8b5cf6", "#0ea5e9"];
 
 function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+
+/* ---------- Avatars ---------- */
+
+export function Avatar({ user, size = 28 }) {
+  return (
+    <span
+      className="avatar"
+      title={user.name}
+      style={{ width: size, height: size, fontSize: size * 0.43, background: AVATAR_COLORS[user.id % AVATAR_COLORS.length] }}
+    >
+      {user.name[0]?.toUpperCase()}
+    </span>
+  );
+}
+
+export function AvatarStack({ users, max = 3, size = 28 }) {
+  const shown = users.slice(0, max);
+  const extra = users.length - shown.length;
+  return (
+    <span className="avatar-stack">
+      {shown.map((u) => <Avatar key={u.id} user={u} size={size} />)}
+      {extra > 0 && <span className="avatar more" style={{ width: size, height: size, fontSize: size * 0.4 }}>+{extra}</span>}
+    </span>
+  );
+}
+
+/* ---------- Header & sidebar ---------- */
 
 export function Header({ query, onQuery, onNewTask, theme, onTheme, user, onLogout, projects = [], activeProjectId, onSelectProject, onNewProject }) {
   return (
@@ -77,7 +105,9 @@ export function Sidebar({ view, onView }) {
   );
 }
 
-function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOver, onDelete }) {
+/* ---------- Board ---------- */
+
+function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOver, onDelete, onOpen }) {
   const handleOver = (e) => {
     if (!canDrag) return;
     e.preventDefault();
@@ -90,6 +120,7 @@ function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOv
     <li
       className={"card p-" + task.priority + (dragging ? " dragging" : "")}
       draggable={canDrag}
+      onClick={() => onOpen(task)}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", String(task.id));
@@ -99,21 +130,28 @@ function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOv
       onDragOver={handleOver}
     >
       <div className="card-top">
-        <h3>{task.title}</h3>
-        <button className="icon-btn" onClick={() => onDelete(task)} aria-label={`Delete ${task.title}`}>
+        <h3><button className="card-title" type="button">{task.title}</button></h3>
+        <button
+          className="icon-btn"
+          onClick={(e) => { e.stopPropagation(); onDelete(task); }}
+          aria-label={`Delete ${task.title}`}
+        >
           <Trash2 size={15} />
         </button>
       </div>
       {task.description && <p>{task.description}</p>}
       <div className="card-foot">
         <span className={"pill " + task.priority}>{PRIORITY_LABEL[task.priority]}</span>
-        <time>{formatDate(task.created_at)}</time>
+        <span className="card-meta">
+          <time>{formatDate(task.created_at)}</time>
+          {task.assignees?.length > 0 && <AvatarStack users={task.assignees} size={26} />}
+        </span>
       </div>
     </li>
   );
 }
 
-export function Column({ column, tone, canDrag, dragId, drop, onDragStart, onDragEnd, onDropTarget, onDrop, onAdd, onDelete }) {
+export function Column({ column, tone, canDrag, dragId, drop, onDragStart, onDragEnd, onDropTarget, onDrop, onAdd, onDelete, onOpen }) {
   const isTarget = drop?.columnId === column.id;
 
   const handleColumnOver = (e) => {
@@ -151,6 +189,7 @@ export function Column({ column, tone, canDrag, dragId, drop, onDragStart, onDra
               onDragEnd={onDragEnd}
               onOver={(index) => onDropTarget({ columnId: column.id, index })}
               onDelete={onDelete}
+              onOpen={onOpen}
             />
           </div>
         ))}
@@ -165,35 +204,45 @@ export function Column({ column, tone, canDrag, dragId, drop, onDragStart, onDra
   );
 }
 
-export function NewTaskModal({ columns, initialColumnId, onClose, onCreate }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("medium");
-  const [columnId, setColumnId] = useState(initialColumnId);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const titleRef = useRef(null);
+/* ---------- Modals ---------- */
 
+function useModalKeys(onClose, focusRef) {
   useEffect(() => {
-    titleRef.current?.focus();
+    focusRef?.current?.focus();
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, focusRef]);
+}
+
+// One modal for both creating a task and editing an existing one.
+export function TaskModal({ columns, members, task, initialColumnId, onClose, onSubmit }) {
+  const editing = Boolean(task);
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [description, setDescription] = useState(task?.description ?? "");
+  const [priority, setPriority] = useState(task?.priority ?? "medium");
+  const [columnId, setColumnId] = useState(initialColumnId);
+  const [assigneeIds, setAssigneeIds] = useState((task?.assignees ?? []).map((a) => a.id));
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const titleRef = useRef(null);
+  useModalKeys(onClose, titleRef);
+
+  const toggle = (id) =>
+    setAssigneeIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return setError("Give the task a title.");
     setSaving(true);
     try {
-      await onCreate(Number(columnId), {
-        title: title.trim(),
-        description: description.trim() || null,
-        priority,
-      });
+      await onSubmit(
+        { title: title.trim(), description: description.trim() || null, priority, assignee_ids: assigneeIds },
+        Number(columnId)
+      );
       onClose();
     } catch (err) {
-      setError(err.message || "Couldn't add the task.");
+      setError(err.message || "Couldn't save the task.");
       setSaving(false);
     }
   };
@@ -202,7 +251,7 @@ export function NewTaskModal({ columns, initialColumnId, onClose, onCreate }) {
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div className="modal-head">
-          <h2 id="modal-title">New task</h2>
+          <h2 id="modal-title">{editing ? "Edit task" : "New task"}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
 
@@ -213,11 +262,13 @@ export function NewTaskModal({ columns, initialColumnId, onClose, onCreate }) {
           <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <div className="row">
-          <label>Column
-            <select value={columnId} onChange={(e) => setColumnId(e.target.value)}>
-              {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
+          {!editing && (
+            <label>Column
+              <select value={columnId} onChange={(e) => setColumnId(e.target.value)}>
+                {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
           <label>Priority
             <select value={priority} onChange={(e) => setPriority(e.target.value)}>
               <option value="low">Low</option>
@@ -227,10 +278,24 @@ export function NewTaskModal({ columns, initialColumnId, onClose, onCreate }) {
           </label>
         </div>
 
+        <fieldset className="assign">
+          <legend>Assign to</legend>
+          <div className="chips">
+            {members.map((m) => (
+              <label key={m.id} className={"chip" + (assigneeIds.includes(m.id) ? " on" : "")}>
+                <input type="checkbox" checked={assigneeIds.includes(m.id)} onChange={() => toggle(m.id)} />
+                <Avatar user={m} size={22} /> {m.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Adding…" : "Add task"}</button>
+          <button type="submit" className="btn primary" disabled={saving}>
+            {saving ? "Saving…" : editing ? "Save changes" : "Add task"}
+          </button>
         </div>
       </form>
     </div>
@@ -243,13 +308,7 @@ export function NewProjectModal({ onClose, onCreate }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const nameRef = useRef(null);
-
-  useEffect(() => {
-    nameRef.current?.focus();
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useModalKeys(onClose, nameRef);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -284,6 +343,66 @@ export function NewProjectModal({ onClose, onCreate }) {
           <button type="submit" className="btn primary" disabled={saving}>{saving ? "Creating…" : "Create project"}</button>
         </div>
       </form>
+    </div>
+  );
+}
+
+export function MembersModal({ members, project, user, onInvite, onClose }) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const emailRef = useRef(null);
+  const isOwner = project.owner_id === user.id;
+  useModalKeys(onClose, isOwner ? emailRef : null);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onInvite(email.trim());
+      setEmail("");
+    } catch (err) {
+      setError(err.message || "Couldn't invite that person.");
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="team-title">
+        <div className="modal-head">
+          <h2 id="team-title">Team · {project.name}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+
+        <ul className="members">
+          {members.map((m) => (
+            <li key={m.id}>
+              <Avatar user={m} size={34} />
+              <div>
+                <strong>{m.name}{m.id === project.owner_id && <em>Owner</em>}</strong>
+                <small>{m.email}</small>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {isOwner ? (
+          <form className="invite" onSubmit={submit}>
+            <label>Invite by email
+              <input ref={emailRef} type="email" value={email} placeholder="name@example.com"
+                onChange={(e) => { setEmail(e.target.value); setError(""); }} />
+            </label>
+            <button className="btn primary" type="submit" disabled={busy}>{busy ? "Adding…" : "Invite"}</button>
+          </form>
+        ) : (
+          <p className="note">Only the project owner can invite people.</p>
+        )}
+        {isOwner && <p className="note">They need a TaskZen account first.</p>}
+        {error && <p className="error" role="alert">{error}</p>}
+      </div>
     </div>
   );
 }

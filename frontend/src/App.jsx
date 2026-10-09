@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, auth } from "./api";
-import { Column, Header, NewProjectModal, NewTaskModal, Sidebar } from "./components";
+import { AvatarStack, Column, Header, MembersModal, NewProjectModal, Sidebar, TaskModal } from "./components";
 import Dashboard from "./Dashboard";
 import Login from "./Login";
 
@@ -9,10 +9,12 @@ export default function App() {
   const [authState, setAuthState] = useState(auth.getToken() ? "checking" : "out"); // checking | in | out | error
   const [projects, setProjects] = useState([]);
   const [project, setProject] = useState(null);
+  const [members, setMembers] = useState([]);
   const [columns, setColumns] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ready | empty | error
   const [query, setQuery] = useState("");
-  const [modalColumnId, setModalColumnId] = useState(null);
+  const [taskModal, setTaskModal] = useState(null); // { type: "new", columnId } | { type: "edit", taskId }
+  const [membersModal, setMembersModal] = useState(false);
   const [projectModal, setProjectModal] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null); // { columnId, index }
@@ -39,6 +41,7 @@ export default function App() {
     setColumns([]);
     setProject(null);
     setProjects([]);
+    setMembers([]);
     setStatus("loading");
     setView("dashboard");
     setQuery("");
@@ -78,12 +81,17 @@ export default function App() {
       if (list.length === 0) {
         setProject(null);
         setColumns([]);
+        setMembers([]);
         return setStatus("empty");
       }
       let saved = null;
       try { saved = Number(localStorage.getItem("tz-project")); } catch {}
       const id = [preferredId, saved].find((x) => list.some((p) => p.id === x)) ?? list[0].id;
-      const board = await api.get(`/projects/${id}/board`);
+      const [board, memberList] = await Promise.all([
+        api.get(`/projects/${id}/board`),
+        api.get(`/projects/${id}/members`),
+      ]);
+      setMembers(memberList);
       setProject(board.project);
       setColumns(board.columns);
       setStatus("ready");
@@ -171,6 +179,20 @@ export default function App() {
     notify("Task added");
   };
 
+  const updateTask = async (task, data) => {
+    const updated = await api.patch(`/tasks/${task.id}`, data);
+    setColumns((cs) =>
+      cs.map((c) => ({ ...c, tasks: c.tasks.map((t) => (t.id === updated.id ? updated : t)) }))
+    );
+    notify("Task saved");
+  };
+
+  const inviteMember = async (email) => {
+    const member = await api.post(`/projects/${project.id}/members`, { email });
+    setMembers((ms) => [...ms, member].sort((a, b) => a.name.localeCompare(b.name)));
+    notify(`${member.name} added to the project`);
+  };
+
   const deleteTask = async (task) => {
     if (!window.confirm(`Delete "${task.title}"?`)) return;
     const snapshot = columns;
@@ -207,7 +229,8 @@ export default function App() {
     );
   }
 
-  const modalColumn = columns.find((c) => c.id === modalColumnId);
+  const editingTask =
+    taskModal?.type === "edit" ? columns.flatMap((c) => c.tasks).find((t) => t.id === taskModal.taskId) : null;
   const total = columns.reduce((n, c) => n + c.tasks.length, 0);
 
   return (
@@ -215,7 +238,7 @@ export default function App() {
       <Header
         query={query}
         onQuery={(v) => { setQuery(v); if (v) setView("board"); }}
-        onNewTask={() => columns[0] && setModalColumnId(columns[0].id)}
+        onNewTask={() => columns[0] && setTaskModal({ type: "new", columnId: columns[0].id })}
         theme={theme}
         onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         user={user}
@@ -254,6 +277,10 @@ export default function App() {
             <div className="titlebar">
               <h1>{project.name}</h1>
               <span className="count">{total} {total === 1 ? "task" : "tasks"}</span>
+              <button className="team-btn" onClick={() => setMembersModal(true)} aria-label="Team members">
+                <AvatarStack users={members} max={4} size={28} />
+                <span>Team</span>
+              </button>
               {q && <span className="hint">Search is on, so dragging is paused.</span>}
             </div>
             <div className="board">
@@ -273,7 +300,8 @@ export default function App() {
                     setDragId(null);
                     setDrop(null);
                   }}
-                  onAdd={() => setModalColumnId(column.id)}
+                  onAdd={() => setTaskModal({ type: "new", columnId: column.id })}
+                  onOpen={(task) => setTaskModal({ type: "edit", taskId: task.id })}
                   onDelete={deleteTask}
                 />
               ))}
@@ -282,12 +310,26 @@ export default function App() {
         )}
       </main>
 
-      {modalColumn && (
-        <NewTaskModal
+      {taskModal && (taskModal.type === "new" || editingTask) && (
+        <TaskModal
+          key={taskModal.type === "edit" ? "edit-" + taskModal.taskId : "new-" + taskModal.columnId}
           columns={columns}
-          initialColumnId={modalColumn.id}
-          onClose={() => setModalColumnId(null)}
-          onCreate={createTask}
+          members={members}
+          task={editingTask}
+          initialColumnId={taskModal.columnId}
+          onClose={() => setTaskModal(null)}
+          onSubmit={(data, columnId) =>
+            editingTask ? updateTask(editingTask, data) : createTask(columnId, data)
+          }
+        />
+      )}
+      {membersModal && project && (
+        <MembersModal
+          members={members}
+          project={project}
+          user={user}
+          onInvite={inviteMember}
+          onClose={() => setMembersModal(false)}
         />
       )}
       {projectModal && (
