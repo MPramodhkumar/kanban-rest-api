@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, LayoutDashboard, Columns3, LogOut, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
+import { BarChart3, LayoutDashboard, Columns3, FolderPlus, LogOut, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
 
 const PRIORITY_LABEL = { low: "Low priority", medium: "Medium priority", high: "High priority" };
 
@@ -8,12 +8,22 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function Header({ query, onQuery, onNewTask, theme, onTheme, user, onLogout }) {
+export function Header({ query, onQuery, onNewTask, theme, onTheme, user, onLogout, projects = [], activeProjectId, onSelectProject, onNewProject }) {
   return (
     <header className="header">
       <div className="brand">
         <span className="logo"><Columns3 size={18} /></span>
         Task<span>Zen</span>
+      </div>
+      <div className="project-switch">
+        {projects.length > 0 && (
+          <select value={activeProjectId ?? ""} onChange={(e) => onSelectProject(Number(e.target.value))} aria-label="Project">
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        )}
+        <button className="theme-btn" onClick={onNewProject} aria-label="New project" title="New project">
+          <FolderPlus size={18} />
+        </button>
       </div>
       <label className="search">
         <Search size={16} />
@@ -221,6 +231,57 @@ export function NewTaskModal({ columns, initialColumnId, onClose, onCreate }) {
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn primary" disabled={saving}>{saving ? "Adding…" : "Add task"}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export function NewProjectModal({ onClose, onCreate }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const nameRef = useRef(null);
+
+  useEffect(() => {
+    nameRef.current?.focus();
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return setError("Give the project a name.");
+    setSaving(true);
+    try {
+      await onCreate({ name: name.trim(), description: description.trim() || null });
+      onClose();
+    } catch (err) {
+      setError(err.message || "Couldn't create the project.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <form className="modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="project-title">
+        <div className="modal-head">
+          <h2 id="project-title">New project</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <label>Name
+          <input ref={nameRef} value={name} maxLength={100} onChange={(e) => { setName(e.target.value); setError(""); }} />
+        </label>
+        <label>Description
+          <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </label>
+        <p className="note">Starts with four columns: To Do, In Progress, In Review and Done.</p>
+        {error && <p className="error" role="alert">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Creating…" : "Create project"}</button>
         </div>
       </form>
     </div>

@@ -301,3 +301,15 @@ button:disabled { cursor: default; }
   .brand.big { margin-bottom: 8px; font-size: 22px; }
 }
 @media (max-width: 760px) { .user-name { display: none; } }
+
+/* ---------- Project switcher ---------- */
+.project-switch { display: flex; align-items: center; gap: 8px; }
+.project-switch select {
+  height: 36px; max-width: 200px; padding: 0 12px; border: 0; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12); color: #fff; font-weight: 700; font-size: 14px;
+}
+.project-switch select:hover { background: rgba(255, 255, 255, 0.2); }
+.project-switch option { background: #fff; color: #18213a; }
+.note { margin: 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 1000px) { .search { display: none; } .header .btn.primary { margin-left: auto; } }
+@media (max-width: 760px) { .project-switch select { max-width: 120px; } }

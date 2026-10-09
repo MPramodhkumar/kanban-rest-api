@@ -5,6 +5,9 @@ from models import Priority
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from typing import Annotated
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+
 class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,3 +82,7 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class ProjectCreate(BaseModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    description: str | None = None

@@ -9,7 +9,7 @@ from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
-
+from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text
 
 class Priority(str, enum.Enum):
     low = "low"
@@ -25,6 +25,13 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime | None]
+
+project_members = Table(
+    "project_members",
+    Base.metadata,
+    Column("project_id", ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
 
 class Project(Base):
     __tablename__ = "projects"

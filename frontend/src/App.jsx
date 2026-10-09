@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, auth } from "./api";
-import { Column, Header, NewTaskModal, Sidebar } from "./components";
+import { Column, Header, NewProjectModal, NewTaskModal, Sidebar } from "./components";
 import Dashboard from "./Dashboard";
 import Login from "./Login";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [authState, setAuthState] = useState(auth.getToken() ? "checking" : "out"); // checking | in | out | error
+  const [projects, setProjects] = useState([]);
   const [project, setProject] = useState(null);
   const [columns, setColumns] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ready | empty | error
   const [query, setQuery] = useState("");
   const [modalColumnId, setModalColumnId] = useState(null);
+  const [projectModal, setProjectModal] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null); // { columnId, index }
   const [toast, setToast] = useState("");
@@ -36,6 +38,7 @@ export default function App() {
     setUser(null);
     setColumns([]);
     setProject(null);
+    setProjects([]);
     setStatus("loading");
     setView("dashboard");
     setQuery("");
@@ -68,18 +71,43 @@ export default function App() {
   };
 
   // ----- board data -----
-  const load = useCallback(async () => {
+  const load = useCallback(async (preferredId) => {
     try {
-      const projects = await api.get("/projects");
-      if (projects.length === 0) return setStatus("empty");
-      const board = await api.get(`/projects/${projects[0].id}/board`);
+      const list = await api.get("/projects");
+      setProjects(list);
+      if (list.length === 0) {
+        setProject(null);
+        setColumns([]);
+        return setStatus("empty");
+      }
+      let saved = null;
+      try { saved = Number(localStorage.getItem("tz-project")); } catch {}
+      const id = [preferredId, saved].find((x) => list.some((p) => p.id === x)) ?? list[0].id;
+      const board = await api.get(`/projects/${id}/board`);
       setProject(board.project);
       setColumns(board.columns);
       setStatus("ready");
+      try { localStorage.setItem("tz-project", String(id)); } catch {}
     } catch (e) {
       if (e.status !== 401) setStatus("error");
     }
   }, []);
+
+  const selectProject = (id) => {
+    if (id === project?.id) return;
+    setQuery("");
+    setStatus("loading");
+    load(id);
+  };
+
+  const createProject = async (data) => {
+    const created = await api.post("/projects", data);
+    setQuery("");
+    setStatus("loading");
+    setView("board");
+    await load(created.id);
+    notify("Project created");
+  };
 
   useEffect(() => {
     if (authState === "in") load();
@@ -129,7 +157,7 @@ export default function App() {
       await Promise.all(saves);
     } catch {
       notify("Couldn't save that move. The board was reloaded.");
-      load();
+      load(project.id);
     }
   };
 
@@ -192,6 +220,10 @@ export default function App() {
         onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         user={user}
         onLogout={logout}
+        projects={projects}
+        activeProjectId={project?.id}
+        onSelectProject={selectProject}
+        onNewProject={() => setProjectModal(true)}
       />
       <Sidebar view={view} onView={setView} />
       <main className="main">
@@ -201,14 +233,15 @@ export default function App() {
           <div className="state">
             <h2>Can't reach the API</h2>
             <p>Start the backend with <code>uvicorn main:app --reload</code> in D:\TaskZen, then try again.</p>
-            <button className="btn primary" onClick={() => { setStatus("loading"); load(); }}>Try again</button>
+            <button className="btn primary" onClick={() => { setStatus("loading"); load(project?.id); }}>Try again</button>
           </div>
         )}
 
         {status === "empty" && (
           <div className="state">
             <h2>No projects yet</h2>
-            <p>Add a project and its columns in the database, then reload this page.</p>
+            <p>Create your first project and TaskZen sets up the To Do, In Progress, In Review and Done columns for you.</p>
+            <button className="btn primary" onClick={() => setProjectModal(true)}>Create a project</button>
           </div>
         )}
 
@@ -256,6 +289,9 @@ export default function App() {
           onClose={() => setModalColumnId(null)}
           onCreate={createTask}
         />
+      )}
+      {projectModal && (
+        <NewProjectModal onClose={() => setProjectModal(false)} onCreate={createProject} />
       )}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
