@@ -51,6 +51,7 @@ class TaskOut(BaseModel):
     position: int
     created_at: datetime | None
     assignees: list[UserBrief] = []
+    comment_count: int = 0
 
 
 class TaskCreate(BaseModel):
@@ -111,3 +112,22 @@ class ProjectCreate(BaseModel):
 
 class MemberAdd(BaseModel):
     email: EmailStr
+
+
+# ---------- Comments ----------
+
+
+class CommentCreate(BaseModel):
+    text: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+    ]
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    task_id: int
+    text: str
+    created_at: datetime | None
+    user: UserBrief

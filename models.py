@@ -1,12 +1,8 @@
-# models.py converts your database design into Python classes so SQLAlchemy knows what your tables, columns, foreign keys, and relationships look like.
-#models.py describes your tables (projects, columns, tasks) in Python, so the backend knows how to read and write them.
-
-
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Column, Enum, ForeignKey, String, Table, Text, func, select
+from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 from database import Base
 
@@ -85,3 +81,24 @@ class Task(Base):
     assignees: Mapped[list["User"]] = relationship(
         secondary=task_assignees, order_by="User.name"
     )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime | None]
+
+    user: Mapped["User"] = relationship()
+
+
+# Number of comments on each task, computed by the database (one subquery, no extra loops)
+Task.comment_count = column_property(
+    select(func.count(Comment.id))
+    .where(Comment.task_id == Task.id)
+    .correlate_except(Comment)
+    .scalar_subquery()
+)

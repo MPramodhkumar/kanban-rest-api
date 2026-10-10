@@ -342,3 +342,43 @@ button:disabled { cursor: default; }
 .members small { color: var(--muted); font-size: 12.5px; }
 .invite { display: flex; align-items: flex-end; gap: 10px; }
 .invite label { flex: 1; }
+
+/* ---------- Comments ---------- */
+.modal { max-height: 92vh; overflow-y: auto; }
+.comment-count { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.comments { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.comments h3 { margin: 0; font-size: 14px; }
+.comments ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; max-height: 220px; overflow-y: auto; }
+.comments li { display: flex; gap: 10px; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.comment-head time { color: var(--muted); font-size: 12px; }
+.comment-head .icon-btn { margin-left: auto; width: 24px; height: 24px; }
+.comments p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.comments p.note, .comments p.error { margin: 0; }
+.comment-form { display: flex; gap: 8px; }
+.modal .comment-form input { flex: 1; min-width: 0; }
+
+/* ---------- Comments ---------- */
+.modal { max-height: 90vh; overflow-y: auto; }
+.task-form { display: flex; flex-direction: column; gap: 14px; }
+.comments { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.comments h3 { margin: 0; font-size: 14px; font-weight: 800; }
+.comments ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; max-height: 220px; overflow-y: auto; }
+.comments li { display: flex; gap: 10px; }
+.comment-body { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 12px; background: var(--input); }
+.comment-head { display: flex; align-items: center; gap: 8px; }
+.comment-head strong { font-size: 13px; }
+.comment-head time { color: var(--muted); font-size: 12px; font-weight: 600; }
+.comment-head .icon-btn { margin: -4px -6px -4px auto; width: 26px; height: 26px; opacity: 0; }
+.comments li:hover .icon-btn, .comment-head .icon-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .comment-head .icon-btn { opacity: 1; } }
+.comment-body p { margin: 4px 0 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-form { display: flex; align-items: flex-end; gap: 10px; }
+.comment-form textarea { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--input); color: var(--ink); resize: none; }
+.comment-form textarea:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; }
+
+/* ---------- Comments button on cards ---------- */
+.comment-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; transition: background 0.15s, color 0.15s; }
+.comment-btn:hover { background: rgba(127, 140, 180, 0.18); color: var(--ink); }
+.comment-btn.has { color: var(--focus); }

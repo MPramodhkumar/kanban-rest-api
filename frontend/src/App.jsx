@@ -179,6 +179,11 @@ export default function App() {
     notify("Task added");
   };
 
+  const setCommentCount = (taskId, count) =>
+    setColumns((cs) =>
+      cs.map((c) => ({ ...c, tasks: c.tasks.map((t) => (t.id === taskId ? { ...t, comment_count: count } : t)) }))
+    );
+
   const updateTask = async (task, data) => {
     const updated = await api.patch(`/tasks/${task.id}`, data);
     setColumns((cs) =>
@@ -301,7 +306,7 @@ export default function App() {
                     setDrop(null);
                   }}
                   onAdd={() => setTaskModal({ type: "new", columnId: column.id })}
-                  onOpen={(task) => setTaskModal({ type: "edit", taskId: task.id })}
+                  onOpen={(task, toComments) => setTaskModal({ type: "edit", taskId: task.id, comments: Boolean(toComments) })}
                   onDelete={deleteTask}
                 />
               ))}
@@ -315,6 +320,10 @@ export default function App() {
           key={taskModal.type === "edit" ? "edit-" + taskModal.taskId : "new-" + taskModal.columnId}
           columns={columns}
           members={members}
+          user={user}
+          ownerId={project.owner_id}
+          onCommentCount={setCommentCount}
+          focusComments={taskModal.comments}
           task={editingTask}
           initialColumnId={taskModal.columnId}
           onClose={() => setTaskModal(null)}

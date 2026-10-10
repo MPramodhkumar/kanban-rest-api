@@ -1,5 +1,3 @@
-#main.py has the API routes that use that connection, such as "list tasks" and "update a task".
-
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -309,4 +307,58 @@ def delete_task(
 ):
     task = get_task_or_404(db, task_id, current_user)
     db.delete(task)
+    db.commit()
+
+
+# ---------- Comments ----------
+
+
+@app.get("/tasks/{task_id}/comments", response_model=list[schemas.CommentOut])
+def list_comments(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user),
+):
+    get_task_or_404(db, task_id, current_user)  # membership check
+    return db.scalars(
+        select(models.Comment)
+        .where(models.Comment.task_id == task_id)
+        .options(selectinload(models.Comment.user))
+        .order_by(models.Comment.created_at, models.Comment.id)
+    ).all()
+
+
+@app.post("/tasks/{task_id}/comments", response_model=schemas.CommentOut, status_code=201)
+def add_comment(
+    task_id: int,
+    body: schemas.CommentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user),
+):
+    get_task_or_404(db, task_id, current_user)
+    comment = models.Comment(task_id=task_id, user_id=current_user.id, text=body.text)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+@app.delete("/comments/{comment_id}", status_code=204)
+def delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user),
+):
+    comment = db.get(models.Comment, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    task = get_task_or_404(db, comment.task_id, current_user)  # membership check
+    project = db.get(models.Project, task.column.project_id)
+    if comment.user_id != current_user.id and project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Only the author or the project owner can delete this comment"
+        )
+
+    db.delete(comment)
     db.commit()

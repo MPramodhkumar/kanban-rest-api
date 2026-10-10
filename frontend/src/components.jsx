@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, LayoutDashboard, Columns3, FolderPlus, LogOut, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
+import { api } from "./api";
+import { BarChart3, LayoutDashboard, Columns3, FolderPlus, LogOut, MessageSquare, Moon, Plus, Search, Settings, Sun, Trash2, X } from "lucide-react";
 
 const PRIORITY_LABEL = { low: "Low priority", medium: "Medium priority", high: "High priority" };
 const AVATAR_COLORS = ["#ef5b4c", "#3b6ef0", "#f0a020", "#1fb26b", "#8b5cf6", "#0ea5e9"];
@@ -143,6 +144,15 @@ function TaskCard({ task, index, canDrag, dragging, onDragStart, onDragEnd, onOv
       <div className="card-foot">
         <span className={"pill " + task.priority}>{PRIORITY_LABEL[task.priority]}</span>
         <span className="card-meta">
+          <button
+            type="button"
+            className={"comment-btn" + (task.comment_count > 0 ? " has" : "")}
+            title="Open comments"
+            aria-label={`Comments (${task.comment_count ?? 0}) on ${task.title}`}
+            onClick={(e) => { e.stopPropagation(); onOpen(task, true); }}
+          >
+            <MessageSquare size={15} />{task.comment_count ?? 0}
+          </button>
           <time>{formatDate(task.created_at)}</time>
           {task.assignees?.length > 0 && <AvatarStack users={task.assignees} size={26} />}
         </span>
@@ -215,8 +225,104 @@ function useModalKeys(onClose, focusRef) {
   }, [onClose, focusRef]);
 }
 
+function formatWhen(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function Comments({ taskId, user, ownerId, onCount, autoFocus }) {
+  const [items, setItems] = useState(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
+  useEffect(() => {
+    let off = false;
+    api.get(`/tasks/${taskId}/comments`)
+      .then((list) => !off && setItems(list))
+      .catch(() => !off && setError("Couldn't load comments."));
+    return () => { off = true; };
+  }, [taskId]);
+
+  const post = async () => {
+    const value = text.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const created = await api.post(`/tasks/${taskId}/comments`, { text: value });
+      const next = [...(items ?? []), created];
+      setItems(next);
+      setText("");
+      onCount(next.length);
+    } catch (err) {
+      setError(err.message || "Couldn't post the comment.");
+    }
+    setBusy(false);
+  };
+
+  const remove = async (comment) => {
+    try {
+      await api.del(`/comments/${comment.id}`);
+      const next = items.filter((c) => c.id !== comment.id);
+      setItems(next);
+      onCount(next.length);
+    } catch (err) {
+      setError(err.message || "Couldn't delete the comment.");
+    }
+  };
+
+  return (
+    <section className="comments" aria-label="Comments">
+      <h3>Comments{items?.length ? ` (${items.length})` : ""}</h3>
+
+      {items === null && !error && <p className="note">Loading…</p>}
+      {items?.length === 0 && <p className="note">No comments yet.</p>}
+
+      <ul>
+        {items?.map((c) => (
+          <li key={c.id}>
+            <Avatar user={c.user} size={28} />
+            <div className="comment-body">
+              <div className="comment-head">
+                <strong>{c.user.name}</strong>
+                <time>{formatWhen(c.created_at)}</time>
+                {(c.user.id === user.id || ownerId === user.id) && (
+                  <button type="button" className="icon-btn" onClick={() => remove(c)} aria-label="Delete comment">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+              <p>{c.text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="comment-form">
+        <input
+          ref={inputRef}
+          value={text}
+          maxLength={2000}
+          placeholder="Write a comment…"
+          aria-label="Write a comment"
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); post(); } }}
+        />
+        <button type="button" className="btn primary" onClick={post} disabled={busy || !text.trim()}>Post</button>
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+    </section>
+  );
+}
+
 // One modal for both creating a task and editing an existing one.
-export function TaskModal({ columns, members, task, initialColumnId, onClose, onSubmit }) {
+export function TaskModal({ columns, members, task, initialColumnId, onClose, onSubmit, user, ownerId, onCommentCount, focusComments }) {
   const editing = Boolean(task);
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -226,7 +332,7 @@ export function TaskModal({ columns, members, task, initialColumnId, onClose, on
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const titleRef = useRef(null);
-  useModalKeys(onClose, titleRef);
+  useModalKeys(onClose, focusComments ? null : titleRef);
 
   const toggle = (id) =>
     setAssigneeIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
@@ -289,6 +395,10 @@ export function TaskModal({ columns, members, task, initialColumnId, onClose, on
             ))}
           </div>
         </fieldset>
+
+        {editing && (
+          <Comments taskId={task.id} user={user} ownerId={ownerId} autoFocus={focusComments} onCount={(n) => onCommentCount(task.id, n)} />
+        )}
 
         {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-actions">
