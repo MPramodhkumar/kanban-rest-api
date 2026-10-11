@@ -1,5 +1,7 @@
 # TaskZen
 
+![CI](https://github.com/MPramodhkumar/kanban-rest-api/actions/workflows/ci.yml/badge.svg)
+
 A Trello-style Kanban board with a **FastAPI + PostgreSQL** REST API and a **React** frontend.
 Teams create projects, invite members, move tasks across columns by drag and drop, assign people,
 and discuss work in comment threads.
@@ -46,6 +48,8 @@ the login token, checks that the user belongs to the project, and then reads or 
 
 ```
 main.py          routes and access checks
+Dockerfile       API image
+docker-compose.yml   database + API + frontend
 models.py        SQLAlchemy tables (User, Project, BoardColumn, Task, Comment)
 schemas.py       Pydantic input/output shapes (passwords are never returned)
 security.py      password hashing and JWT
@@ -98,6 +102,36 @@ npm run dev
 
 Open http://localhost:5173, create an account, then create your first project with the folder button in the header.
 
+## Run everything with Docker
+
+The fastest way to try the app: one command starts PostgreSQL, the API and the frontend.
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+**1. Create `docker.env`** (database password and signing key; it is ignored by Git):
+
+```powershell
+python -c "import secrets; open('docker.env','w',newline='\n').write('POSTGRES_PASSWORD=' + secrets.token_urlsafe(24) + '\nSECRET_KEY=' + secrets.token_hex(32) + '\n')"
+```
+
+**2. Start it:**
+
+```powershell
+docker compose --env-file docker.env up --build
+```
+
+| What | Address |
+|---|---|
+| App | http://localhost:8080 |
+| API docs | http://localhost:8000/docs |
+
+The database tables are created from `schema.sql` the first time it starts. Your data lives in a Docker volume,
+so it survives restarts.
+
+```powershell
+docker compose down        # stop (data is kept)
+docker compose down -v     # stop and delete all data
+```
+
 ## Running the tests
 
 ```powershell
@@ -107,7 +141,9 @@ pytest
 
 The tests use a temporary SQLite file and set their own secret key, so they never touch your PostgreSQL database.
 They cover registration and login, password hashing, project and column access, invitations, task create/update/move/delete,
-assignee rules, comment permissions, and rejection of invalid input.
+assignee rules, comment permissions, CORS, and rejection of invalid input.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds the frontend and builds the Docker images on every push and pull request.
 
 ## API overview
 
@@ -132,7 +168,7 @@ Everything except register and login needs `Authorization: Bearer <token>`.
 - Tokens expire after 8 hours.
 - `.env` holds the database password and signing key and must never be committed.
 - Anyone who is not a project member gets a 404 for its columns, tasks and comments.
-- CORS only allows the local frontend (`localhost:5173`); change it in `main.py` when you deploy.
+- CORS only allows the frontend addresses listed in the `CORS_ORIGINS` setting (default: `localhost:5173`; Docker uses `localhost:8080`). Set it to your real site address when you deploy.
 
 ## Roadmap
 
@@ -141,4 +177,6 @@ Everything except register and login needs `Authorization: Bearer <token>`.
 - [ ] Alembic migrations
 - [ ] Reports page and notifications
 - [ ] Real-time updates (WebSockets)
-- [ ] Docker and CI/CD (GitHub Actions)
+- [x] Docker (database, API and frontend with one command)
+- [x] Continuous integration (GitHub Actions)
+- [ ] Deployment to a cloud host
