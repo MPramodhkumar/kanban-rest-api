@@ -283,6 +283,11 @@ def update_task(
     data = changes.model_dump(exclude_unset=True)
     assignee_ids = data.pop("assignee_ids", None)
 
+    # These fields can't be empty in the database, so reject null with a clear error
+    for field in ("column_id", "title", "priority", "position"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
+
     if "column_id" in data:
         new_column = get_column_or_404(db, data["column_id"], current_user)
         if new_column.project_id != task.column.project_id:
