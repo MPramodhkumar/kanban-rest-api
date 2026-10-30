@@ -40,7 +40,7 @@ export default function Login({ onAuthed }) {
       <div className="auth-art" aria-hidden="true">
         <div className="brand big"><span className="logo"><Columns3 size={22} /></span>Task<span>Zen</span></div>
         <h2>Plan it. Move it. Finish it.</h2>
-        <p>A simple Kanban board backed by FastAPI and PostgreSQL.</p>
+        <p>A Every task has a place. Every goal has a path. Make your next move with TaskZen..</p>
       </div>
 
       <form className="auth-card" onSubmit={submit}>
