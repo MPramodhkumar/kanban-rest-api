@@ -1,5 +1,5 @@
 // Change this if your backend runs somewhere else (or set VITE_API_URL in frontend/.env)
-const BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_API_URL || "https://taskzen-api-rm3n.onrender.com";
 const TOKEN_KEY = "tz-token";
 
 export const auth = {
