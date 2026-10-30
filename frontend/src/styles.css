@@ -382,3 +382,91 @@ button:disabled { cursor: default; }
 .comment-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; transition: background 0.15s, color 0.15s; }
 .comment-btn:hover { background: rgba(127, 140, 180, 0.18); color: var(--ink); }
 .comment-btn.has { color: var(--focus); }
+
+
+
+.brand .zen {
+  background: linear-gradient(90deg, #777094 0%, #a78bfa 50%, #e9d5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent; /* fallback */
+}
+
+
+
+
+
+/*planit moveit finidhit*/
+
+.auth-tagline {
+  color: white;
+  font-weight: 800;
+  line-height: 1.4;
+  font-size: clamp(1.6rem, 8vw, 3.2rem);
+}
+
+.auth-tagline .line-one,
+.auth-tagline .line-two {
+  display: block;
+  position: relative;
+  width: fit-content;
+  white-space: nowrap;
+  padding-right: 8px;
+  -webkit-clip-path: inset(0 100% 0 0);
+  clip-path: inset(0 100% 0 0);
+}
+
+/* caret */
+.auth-tagline .line-one::after,
+.auth-tagline .line-two::after {
+  content: "";
+  position: absolute;
+  top: 0.2em;
+  bottom: 0.2em;
+  left: 0;
+  width: 3px;
+  background: #a78bfa;
+  opacity: 0;
+}
+
+/* Line 1: "Plan it. Move it." (17 characters) */
+.auth-tagline .line-one {
+  animation: reveal 1.7s steps(17, end) forwards;
+}
+.auth-tagline .line-one::after {
+  animation:
+    caretMove 1.7s steps(17, end) forwards,
+    caretShow 1.7s step-end forwards;
+}
+
+/* Line 2: "Finish it." (10 characters), starts after line 1 + short pause */
+.auth-tagline .line-two {
+  animation: reveal 1s steps(10, end) 2.1s forwards;
+}
+.auth-tagline .line-two::after {
+  animation:
+    caretMove 1s steps(10, end) 2.1s forwards,
+    caretShow 1s step-end 2.1s forwards;
+}
+
+@-webkit-keyframes reveal {
+  to { -webkit-clip-path: inset(0 0 0 0); }
+}
+@keyframes reveal {
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes caretMove {
+  from { left: 0; }
+  to   { left: calc(100% - 3px); }
+}
+
+/* caret is visible while typing, hidden when the line finishes */
+@keyframes caretShow {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+

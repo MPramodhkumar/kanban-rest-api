@@ -39,8 +39,16 @@ export default function Login({ onAuthed }) {
     <div className="auth">
       <div className="auth-art" aria-hidden="true">
         <div className="brand big"><span className="logo"><Columns3 size={22} /></span>Task<span>Zen</span></div>
-        <h2>Plan it. Move it. Finish it.</h2>
-        <p>A Every task has a place. Every goal has a path. Make your next move with TaskZen..</p>
+
+        <h2 className="auth-tagline">
+          <span className="line-one">Plan it. Move it.</span>
+          <span className="line-two">Finish it.</span>
+        </h2>
+
+        <p className="auth-description">
+        Students, developers, teams, and dreamers <br />
+        Organize your work, collaborating with a team , and achieve more with TaskZen.
+        </p>
       </div>
 
       <form className="auth-card" onSubmit={submit}>
